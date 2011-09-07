@@ -8,7 +8,11 @@
     "url": "https://slyphon@github.com/slyphon/coffee-irc.git"
   },
   "dependencies":{
-    "coffee-script":"~1.1.2"
-  }
+    "coffee-script": "~1.1.2",
+    "underscore": "~1.1.7"
+  },
+  "devDependencies":{
+    "vows": "~0.5.11"
+  },
   "private": true
 }
