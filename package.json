@@ -14,5 +14,6 @@
   "devDependencies":{
     "vows": "~0.5.11"
   },
+  "main": "./lib/coffee-irc.js",
   "private": true
 }

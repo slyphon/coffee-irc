@@ -11,7 +11,7 @@ replyFor = require('./replyFor')
 class Client extends events.EventEmitter
   self = this
 
-  @createDefaults: ->
+  @defaultOpts:
     password: null
     userName: 'coffee-irc'
     realName: 'coffee-irc client'
@@ -21,16 +21,19 @@ class Client extends events.EventEmitter
     showErrors: false
     autoRejoin: true
     autoConnect: true
-    channels: []
+    channels: null
     retryCount: null
     retryDelay: 2000
     secure: false
 
-  constructor: (server, nick, @opt) ->
-    _.defaults(@opt, self.createDefaults())
+
+  constructor: (server, nick, @opt={}) ->
+    _.defaults(@opt, @defaultOpts)
+
+    @opt.channels = [] unless @opt.channels
+
     @conn = null
 
-module.exports.Client = Client
-
+module.exports = Client
 
 
