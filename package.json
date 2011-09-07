@@ -1,0 +1,14 @@
+{
+  "name": "coffee-irc",
+  "version": "0.0.1",
+  "description": "event-based rfc2812 IRC client implemented in coffescript",
+  "author": "Jonathan D. Simms <slyphon@gmail.com>",
+  "repository":{
+    "type": "git",
+    "url": "https://slyphon@github.com/slyphon/coffee-irc.git"
+  },
+  "dependencies":{
+    "coffee-script":"~1.1.2"
+  }
+  "private": true
+}
