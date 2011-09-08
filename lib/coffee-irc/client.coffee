@@ -10,8 +10,8 @@ replyFor = require('./replyFor')
 {EventEmitter} = require('events')
 {InvalidConfigError} = require('./errors')
 
-
 UTF8 = 'utf8'
+CRLF = "\r\n"
 
 class Client extends EventEmitter
   @defaultOpts:
@@ -25,7 +25,7 @@ class Client extends EventEmitter
     autoRejoin: true
     autoConnect: true
     channels: null
-    retryCount: null
+    retryLimit: null
     retryDelay: 2000
     secure: false
 
@@ -39,12 +39,14 @@ class Client extends EventEmitter
       server: server
       nick: nick
 
-    @opt.channels = [] unless @opt.channels
+    @opt.channels ?= []
     @conn = null
+    @chans = {}
     @buffer = ''
+    @retryCount = 0
     this._validateConfig()
 
-  connect: (retryCount=0) =>
+  connect: () =>
     if @opt.secure
       this._createSecureConnection()
     else
@@ -57,6 +59,29 @@ class Client extends EventEmitter
     @conn.addListener 'data', this._handleConnData
     @conn.addListener 'end', this._handleConnEnd
 
+  disconnect: (message=null) ->
+    message ?= "coffee-irc says goodbye"
+
+    this.send('QUIT', message) if @conn.readyState == 'open'
+
+    @conn.requestedDisconnect = true
+    @conn.end()
+    
+  send: (args..., last) ->
+    req = "#{args.join(' ')} :#{last}"
+    this._debug "SEND: #{req}"
+    @conn.write([req, CRLF].join(''))
+
+  join: (channel, callback) ->
+    this.once('join' + channel, callback) if _(callback).isFunction()
+    this.send('JOIN', channel)
+  
+  part: (channel, callback) ->
+    this.once('part' + channel, callback) if _(callback).isFunction()
+    this.send('PART', channel)
+
+  say: (target, text):
+    this.send('PRIVMSG', target, text)
 
   _createSecureConnection: () ->
     creds =
@@ -91,9 +116,33 @@ class Client extends EventEmitter
     this.emit('connect')
 
   _handleConnData: (chunk) =>
+    # use a persistent buffer
     @buffer += chunk
+    lines = @buffer.split("\r\n")
+    @buffer = lines.pop()
+    for line in lines
+      do (line) ->
+        message = this.parseMessage(line)
+        try
+          self.emit('raw', message)
+        catch err
+          throw err if !@conn.requestedDisconnect
 
   _handleConnEnd: () =>
+    return if @conn.requestedDisconnect
+      
+    this._debug("Disconnected: reconnecting")
+
+    if !_(@opt.retryLimit).isNull() && @retryCount >= @opt.retryLimit
+      this._debug("maxiumum retry count (#{@retryCount}) reached, aborting")
+      this.emit("abort", @opt.retryLimit)
+      return
+
+    this._debug("waiting for #{@opt.retryDelay} ms before retrying")
+
+    @retryCount += 1
+    setTimeout this.connect, @opt.retryDelay
+
 
   _validateConfig: () ->
     {nick,server} = @opt
@@ -107,6 +156,9 @@ class Client extends EventEmitter
     unless _(server).isString()
       throw new InvalidConfigError("You must specify a server")
 
+  _debug: (message) =>
+    return unless @opt.debug
+    console.log(message)
 
 module.exports = Client
 
