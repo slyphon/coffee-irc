@@ -1,5 +1,8 @@
 # See LICENSE file for details
 
+# for testing purposes
+require = GENTLY.hijack(require) if global.GENTLY
+
 sys = require('sys')
 net = require('net')
 tls = require('tls')
@@ -44,44 +47,48 @@ class Client extends EventEmitter
     @chans = {}
     @buffer = ''
     @retryCount = 0
-    this._validateConfig()
+    @_validateConfig()
 
-  connect: () =>
+  # if a callback is passed, it will be called with an error if an exception occurs
+  # or no arguments upon connection
+  connect: (callback) =>
+    @once('connect', callback) if _(callback).isFunction()
+
     if @opt.secure
-      this._createSecureConnection()
+      @_createSecureConnection()
     else
-      this._createConnection()
+      @_createConnection()
 
     @conn.requestedDisconnect = false
     @conn.setTimeout(0)
     @conn.setEncoding(UTF8)
-    @conn.addListener 'connect', this._handleConnConnect
-    @conn.addListener 'data', this._handleConnData
-    @conn.addListener 'end', this._handleConnEnd
+    @conn.addListener 'connect', @_handleConnConnect
+    @conn.addListener 'data', @_handleConnData
+    @conn.addListener 'end', @_handleConnEnd
 
   disconnect: (message=null) ->
     message ?= "coffee-irc says goodbye"
 
-    this.send('QUIT', message) if @conn.readyState == 'open'
+    @send('QUIT', message) if @conn.readyState == 'open'
 
     @conn.requestedDisconnect = true
     @conn.end()
     
   send: (args..., last) ->
     req = "#{args.join(' ')} :#{last}"
-    this._debug "SEND: #{req}"
+    @_debug "SEND: #{req}"
     @conn.write([req, CRLF].join(''))
 
   join: (channel, callback) ->
-    this.once('join' + channel, callback) if _(callback).isFunction()
-    this.send('JOIN', channel)
+    @once('join' + channel, callback) if _(callback).isFunction()
+    @send('JOIN', channel)
   
   part: (channel, callback) ->
-    this.once('part' + channel, callback) if _(callback).isFunction()
-    this.send('PART', channel)
+    @once('part' + channel, callback) if _(callback).isFunction()
+    @send('PART', channel)
 
   say: (target, text):
-    this.send('PRIVMSG', target, text)
+    @send('PRIVMSG', target, text)
 
   _createSecureConnection: () ->
     creds =
@@ -91,10 +98,10 @@ class Client extends EventEmitter
       @conn.connected = true
 
       if @conn.authorized
-        this._handleConnConnect()
+        @_handleConnConnect()
       else
         console.log(@conn.authorizationError)
-        # XXX: uhh, *THEN* what?
+        @emit('connect', @conn.authorizationError)
 
   _createConnection: () ->
     {port, server} = @opt
@@ -107,13 +114,13 @@ class Client extends EventEmitter
     @conn.setEncoding(UTF8)
 
     unless _(password).isNull()
-      this.send('PASS', password)
+      @send('PASS', password)
 
     console.log("sending irc NICK/USER")
-    this.send('NICK', nick)
+    @send('NICK', nick)
     @nick = nick
-    this.send('USER', userName, 8, '*', realName)
-    this.emit('connect')
+    @send('USER', userName, 8, '*', realName)
+    @emit('connect')
 
   _handleConnData: (chunk) =>
     # use a persistent buffer
@@ -122,7 +129,7 @@ class Client extends EventEmitter
     @buffer = lines.pop()
     for line in lines
       do (line) ->
-        message = this.parseMessage(line)
+        message = @parseMessage(line)
         try
           self.emit('raw', message)
         catch err
@@ -131,17 +138,18 @@ class Client extends EventEmitter
   _handleConnEnd: () =>
     return if @conn.requestedDisconnect
       
-    this._debug("Disconnected: reconnecting")
+    @_debug("Disconnected: reconnecting")
 
     if !_(@opt.retryLimit).isNull() && @retryCount >= @opt.retryLimit
-      this._debug("maxiumum retry count (#{@retryCount}) reached, aborting")
-      this.emit("abort", @opt.retryLimit)
+      msg = "maxiumum retry count (#{@retryCount}) reached, aborting"
+      @_debug(msg)
+      @emit('', msg)
       return
 
-    this._debug("waiting for #{@opt.retryDelay} ms before retrying")
+    @_debug("waiting for #{@opt.retryDelay} ms before retrying")
 
     @retryCount += 1
-    setTimeout this.connect, @opt.retryDelay
+    setTimeout @connect, @opt.retryDelay
 
 
   _validateConfig: () ->

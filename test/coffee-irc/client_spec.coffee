@@ -1,10 +1,13 @@
-{Client, replyFor} = require('./../../')
-
 vows = require('vows')
 assert = require('assert')
+gently = require('gently')
+
+{Client, replyFor} = require('./../../')
 
 SERVER = 'irc.example.com'
 NICK = 'nick-danger'
+
+client = new Client, SERVER, NICK
 
 vows.describe('client_vows').addBatch({
   "construction with default opts":
@@ -16,6 +19,10 @@ vows.describe('client_vows').addBatch({
       assert.isArray(channels)
       assert.isEmpty(channels)
 
+  "connect":
+    topic: () ->
+
+      
 
 }).run()
 
