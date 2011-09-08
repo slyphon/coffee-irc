@@ -1,11 +1,6 @@
 # See LICENSE file for details
 
-# for testing purposes
-require = GENTLY.hijack(require) if global.GENTLY
-
 sys = require('sys')
-net = require('net')
-tls = require('tls')
 _ = require('underscore')
 
 replyFor = require('./replyFor')
@@ -17,6 +12,11 @@ UTF8 = 'utf8'
 CRLF = "\r\n"
 
 class Client extends EventEmitter
+  # this allows these modules to be stubbed out in tests,
+  # gross but apparently necessary :/
+  @net = require('net')
+  @tls = require('tls')
+
   @defaultOpts:
     password: null
     userName: 'coffee-irc'
@@ -32,8 +32,9 @@ class Client extends EventEmitter
     retryDelay: 2000
     secure: false
 
-  constructor: (server, nick, @opt={}) ->
-    _.defaults(@opt, @defaultOpts)
+  constructor: (server, nick, @opt) ->
+    @opt ?= {}
+    _(@opt).defaults(@defaultOpts)
 
     # according to RFC2812
     nick = nick.substr(0,9) if nick.length > 9
@@ -87,14 +88,14 @@ class Client extends EventEmitter
     @once('part' + channel, callback) if _(callback).isFunction()
     @send('PART', channel)
 
-  say: (target, text):
+  say: (target, text) ->
     @send('PRIVMSG', target, text)
 
   _createSecureConnection: () ->
     creds =
-      if (typeof @opt.secure !== 'object') then {} else @opt.secure
+      if (typeof(@opt.secure) != 'object') then {} else @opt.secure
     
-    @conn = tls.connect @opt.port, @opt.server, creds, () =>
+    @conn = Client.tls.connect @opt.port, @opt.server, creds, () =>
       @conn.connected = true
 
       if @conn.authorized
@@ -105,7 +106,7 @@ class Client extends EventEmitter
 
   _createConnection: () ->
     {port, server} = @opt
-    @conn = net.createConnection(port, server)
+    @conn = Client.net.createConnection(port, server)
 
   # called by our code after either a connection event is received or 
   # our TLS connection is authorized

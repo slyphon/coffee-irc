@@ -1,29 +1,28 @@
-vows = require('vows')
 assert = require('assert')
-gently = require('gently')
+_ = require('underscore')
 
 {Client, replyFor} = require('./../../')
 
 SERVER = 'irc.example.com'
 NICK = 'nick-danger'
 
-client = new Client, SERVER, NICK
+customMatchers =
+  toBeArray: () -> _(@actual).isArray()
+  toBeEmpty: () -> _(@actual).isEmpty()
 
-vows.describe('client_vows').addBatch({
-  "construction with default opts":
-    topic: () ->
-      new Client SERVER, NICK
+describe 'Client', ->
+  beforeEach ->
+    @addMatchers(customMatchers)
 
-    'it should have an empty channels property': (client) ->
+  describe "construction with default opts", ->
+    client = null
+
+    beforeEach ->
+      client = new Client SERVER, NICK
+
+    it 'should have an empty channels property', ->
       channels = client.opt.channels
-      assert.isArray(channels)
-      assert.isEmpty(channels)
-
-  "connect":
-    topic: () ->
-
-      
-
-}).run()
+      expect(channels).toBeArray()
+      expect(channels).toBeEmpty()
 
 

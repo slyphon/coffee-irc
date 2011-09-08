@@ -1,4 +1,4 @@
-module.exports.InvalidConfigError =
-  class InvalidConfigError extends Error
+class InvalidConfigError extends Error
 
+module.exports.InvalidConfigError = InvalidConfigError
 
