@@ -23,7 +23,7 @@ class Client extends EventEmitter
     realName: 'coffee-irc client'
     secure: false
     port: 6667
-    debug: false
+    debug: true
     showErrors: false
     autoRejoin: true
     autoConnect: true
@@ -34,7 +34,7 @@ class Client extends EventEmitter
 
   constructor: (server, nick, @opt) ->
     @opt ?= {}
-    _(@opt).defaults(@defaultOpts)
+    _(@opt).defaults(Client.defaultOpts)
 
     # according to RFC2812
     nick = nick.substr(0,9) if nick.length > 9
@@ -106,7 +106,7 @@ class Client extends EventEmitter
 
   _createConnection: () ->
     {port, server} = @opt
-    @conn = Client.net.createConnection(port, server)
+    @conn = Client.net.createConnection(server, port)
 
   # called by our code after either a connection event is received or 
   # our TLS connection is authorized
@@ -150,7 +150,7 @@ class Client extends EventEmitter
     @_debug("waiting for #{@opt.retryDelay} ms before retrying")
 
     @retryCount += 1
-    setTimeout @connect, @opt.retryDelay
+    setTimeout(@connect, @opt.retryDelay)
 
 
   _validateConfig: () ->
