@@ -3,10 +3,11 @@
 sys = require('sys')
 _ = require('underscore')
 
+commands = require('./commands')
 replyFor = require('./replyFor')
 
 {EventEmitter} = require('events')
-{InvalidConfigError} = require('./errors')
+{InvalidConfigError, UnrecognizedCommandError} = require('./errors')
 
 UTF8 = 'utf8'
 CRLF = "\r\n"
@@ -75,8 +76,19 @@ class Client extends EventEmitter
     @conn.requestedDisconnect = true
     @conn.end()
     
-  send: (args..., last) ->
-    req = "#{args.join(' ')} :#{last}"
+  send: (command, args...) ->
+    cmd = commands[command]
+
+    unless cmd
+      i = sys.inspect
+      throw new UnrecognizedCommandError "unknown command #{i(command)}, args: #{i(args)}"
+
+    if cmd.style is 'trailing'
+      last = args.pop()
+      args.push(":#{last}")
+
+    req = "#{command} #{args.join(' ')}"
+
     @_debug "SEND: #{req}"
     @conn.write([req, CRLF].join(''))
 

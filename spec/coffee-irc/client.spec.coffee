@@ -38,6 +38,7 @@ describe 'Client', ->
       _(socket).extend
         setTimeout: -> {}
         setEncoding: -> {}
+        write: -> {}
 
     beforeEach ->
       resetSocket()
@@ -53,12 +54,17 @@ describe 'Client', ->
         client.connect()
         expect(socket.setEncoding).toHaveBeenCalledWith('utf8')
 
-      it 'should listen for the connect event on the socket', ->
-        spyOn(socket, 'write')
-#         connected_cb = jasmine.createSpy()
-#         client.connect(connected_cb)
-#         socket.emit('connect')
-#         expect(socket.write).toHaveBeenCalledWith("NICK :#{NICK}")
-#         expect(socket.write).toHaveBeenCalledWith("USER #{USER_NAME} 8 * :#{REAL_NAME}")
+      describe 'on connection', ->
+        beforeEach ->
+          spyOn(socket, 'write')
+          connected_cb = jasmine.createSpy()
+          client.connect(connected_cb)
+          socket.emit('connect')
+
+        it 'should register the nickname', ->
+          expect(socket.write.argsForCall[0][0]).toEqual("NICK #{NICK.substr(0,9)}\r\n")
+
+        xit 'should send the USER command', ->
+          expect(socket.write).toHaveBeenCalledWith("USER #{USER_NAME} 8 * :#{REAL_NAME}")
 
 
