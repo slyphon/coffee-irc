@@ -8,10 +8,17 @@ SERVER = 'irc.example.com'
 NICK = 'nick-danger'
 USER_NAME = 'coffee-irc'
 REAL_NAME = 'coffee-irc client'
+CRLF = "\r\n"
 
 customMatchers =
   toBeArray: () -> _(@actual).isArray()
   toBeEmpty: () -> _(@actual).isEmpty()
+
+  # any one of a spy's argsForCall matches, then we're true
+  toHaveBeenCalledAtAnyTimeWith: (args) ->
+    _.any @actual.argsForCall, (actualArgs) ->
+      _(actualArgs).isEqual(args)
+
 
 describe 'Client', ->
   client = null
@@ -31,7 +38,7 @@ describe 'Client', ->
       expect(channels).toBeEmpty()
 
   describe 'connection', ->
-    socket = null
+    socket = connected_cb = null
 
     resetSocket = ->
       socket = new EventEmitter()
@@ -39,6 +46,10 @@ describe 'Client', ->
         setTimeout: -> {}
         setEncoding: -> {}
         write: -> {}
+
+    shouldHaveWrittenToSocket = (line) ->
+      expect(socket.write).toHaveBeenCalledAtAnyTimeWith([line + CRLF])
+
 
     beforeEach ->
       resetSocket()
@@ -62,9 +73,13 @@ describe 'Client', ->
           socket.emit('connect')
 
         it 'should register the nickname', ->
-          expect(socket.write.argsForCall[0][0]).toEqual("NICK #{NICK.substr(0,9)}\r\n")
+          shouldHaveWrittenToSocket("NICK #{NICK.substr(0,9)}")
 
-        xit 'should send the USER command', ->
-          expect(socket.write).toHaveBeenCalledWith("USER #{USER_NAME} 8 * :#{REAL_NAME}")
+        it 'should send the USER command', ->
+          shouldHaveWrittenToSocket("USER #{USER_NAME} 8 * :#{REAL_NAME}")
+
+        it 'should emit the connect event', ->
+          expect(connected_cb).toHaveBeenCalled()
+
 
 
