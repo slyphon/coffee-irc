@@ -5,6 +5,7 @@ _ = require('underscore')
 
 commands = require('./commands')
 replyFor = require('./replyFor')
+message  = require('./message')
 
 {EventEmitter} = require('events')
 {InvalidConfigError, UnrecognizedCommandError} = require('./errors')
@@ -181,49 +182,9 @@ class Client extends EventEmitter
     return unless @opt.debug
     console.log(message)
 
-
   _parseMessage: (line) ->
-    message = {}
-    match = null
-
-    # parse prefix
-    if match = line.match(/^:([^ ]+) +/)
-      message.prefix = match[1]
-      line = line.replace(/^:[^ ]+ +/, '')
-
-      if match = message.prefix.match(/^([_a-zA-Z0-9\[\]\\`^{}|-]*)(!([^@]+)@(.*))?$/)
-        [x, message.nick, x, message.user, message.host] = match
-      else
-        message.server = message.prefix
-
-    # parse command
-    match = line.match(/^([^ ]+) +/)
-    message.command = message.rawCommand = match[1]
-    message.commandType = 'normal'
-    line = line.replace(/^[^ ]+ +/, '')
-
-    if rf = replyFor[message.rawCommand]
-      message.command = rf.name
-      message.commandType = rf.type
-     
-    message.args = []
-
-    middle = trailing = null
-    idx = line.indexOf(':')
-
-    if idx > -1
-      middle = line.substr(0, idx).replace(/ +$/, "")
-      trailing = line.substr(idx + 1)
-    else
-      middle = line
-
-    if middle.length
-      message.args = middle.split(/ +/)
-
-    unless _(trailing).isNull()
-      message.args.push(trailing) if trailing.length
-
-    return message
+    # possibly do other processing here
+   message.parse(line)
 
 
 module.exports = Client

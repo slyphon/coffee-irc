@@ -2,7 +2,7 @@ assert = require('assert')
 {EventEmitter} = require('events')
 _ = require('underscore')
 
-{Client, replyFor} = require('./../../')
+{Client, replyFor, message} = require('./../../')
 
 SERVER = 'irc.example.com'
 NICK = 'nick-danger'
@@ -80,6 +80,5 @@ describe 'Client', ->
 
         it 'should emit the connect event', ->
           expect(connected_cb).toHaveBeenCalled()
-
 
 
