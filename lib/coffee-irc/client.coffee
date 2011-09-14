@@ -7,13 +7,16 @@ commands = require('./commands')
 replyFor = require('./replyFor')
 message  = require('./message')
 
-{EventEmitter} = require('events')
+{EventEmitter2} = require('eventemitter2')
 {InvalidConfigError, UnrecognizedCommandError} = require('./errors')
 
 UTF8 = 'utf8'
 CRLF = "\r\n"
 
-class Client extends EventEmitter
+# The base Client prototype. When messages are received from the server
+# they will be dispatched via a namespaced event on the client instance
+#
+class Client extends EventEmitter2
   # this allows these modules to be stubbed out in tests,
   # gross but apparently necessary :/
   @net = require('net')

@@ -96,6 +96,8 @@ PrivmsgMixin =
     return msg
 
 
+# A parsed IRC message.
+#
 class Message
   constructor: (line, @client = null, @opt = {}) ->
     @prefix = @server = @rawCommand = @command = @nick = @user = null

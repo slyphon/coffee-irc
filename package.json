@@ -9,13 +9,12 @@
   },
   "dependencies":{
     "coffee-script": "~1.1.2",
-    "underscore": "~1.1.7"
+    "underscore": "~1.1.7",
+    "eventemitter2": "~0.4.1"
   },
   "devDependencies":{
-    "vows": "~0.5.11",
-    "gently":"",
     "nodemock":"",
-    "jasmine-node":""
+    "jasmine-node":"~1.0.9"
   },
   "main": "./lib/coffee-irc.js",
   "private": true
