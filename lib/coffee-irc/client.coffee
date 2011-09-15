@@ -8,10 +8,47 @@ replyFor = require('./replyFor')
 message  = require('./message')
 
 {EventEmitter2} = require('eventemitter2')
-{InvalidConfigError, UnrecognizedCommandError} = require('./errors')
+
+{InvalidConfigError,
+ UnrecognizedCommandError,
+ ArgumentError} = require('./errors')
 
 UTF8 = 'utf8'
 CRLF = "\r\n"
+
+class Mode
+  constructor: ->
+    @flags = {}
+    
+  update: (modeStr) ->
+    _i = sys.inspect
+
+    unless _(modeStr).isString()
+      throw new ArgumentError("argument to update must be a string, not: #{_i(modeStr)}")
+
+    oper = modeStr[0]
+
+    unless (oper is '-') or (oper is '+')
+      throw new ArgumentError("Invalid mode string: #{_i(modeStr)}")
+
+    for f in modeStr[1..-1]
+      do (f) ->
+        @flags[f] = (oper is '+')
+
+  toString: () ->
+    a = ['+']
+
+    for k in _(@flags).keys()
+      do (k) ->
+        a.push(k) if @flags[k]
+
+    a.join('')
+
+
+class Channel
+  constructor: (@name) -> {}
+
+
 
 # The base Client prototype. When messages are received from the server
 # they will be dispatched via a namespaced event on the client instance
@@ -37,11 +74,46 @@ class Client extends EventEmitter2
     retryDelay: 2000
     secure: false
 
+  @emitterOpts:
+    wildcard: true
+    delimiter: '.'
+    maxListeners: 500
+
+  # these functions will be bound to the client as handlers
+  # at construction time. they are defined here to give users
+  # of this client a chance to modify them before construction
+  @protocolHandlers:
+    rpl_welcome: (msg) ->
+      @emit('registered')
+
+    err_nicknameinuse: (msg) ->
+      @nickTryCount++
+      @nick = "#{@nick}_"
+      @send('NICK', @nick)
+
+    ping: (msg) ->
+      @send('PONG', msg.args[0])
+
+    notice: (msg) ->
+      [from, to, text] = [msg.nick, msg.args[0], msg.args[1]]
+      to ?= null
+      @_debug("NOTICE from: #{if from? then from else 'the server'}: '#{text}'")
+      @emit('notice', from, to, text)
+
+    mode: (msg) ->
+      [who, mode] = msg.args[0..1]
+      @_debug("MODE: #{who} mode: #{mode}")
+
+        
   constructor: (server, nick, @opt) ->
+    # set up EventEmitter2
+    super(Client.emitterOpts)
+
     @opt ?= {}
     _(@opt).defaults(Client.defaultOpts)
 
     # according to RFC2812
+    # XXX: get rid of this, it's dumb
     nick = nick.substr(0,9) if nick.length > 9
 
     _(@opt).extend
@@ -53,6 +125,7 @@ class Client extends EventEmitter2
     @chans = {}
     @buffer = ''
     @retryCount = 0
+    @nickTryCount = 0
     @_validateConfig()
 
   # if a callback is passed, it will be called with an error if an exception occurs
@@ -107,6 +180,10 @@ class Client extends EventEmitter2
   say: (target, text) ->
     @send('PRIVMSG', target, text)
 
+  _messageReceived: (line) ->
+    message = @_parseMessage(line)
+    @emit(['raw', message.command], message)
+
   _createSecureConnection: () ->
     creds =
       if (typeof(@opt.secure) != 'object') then {} else @opt.secure
@@ -146,9 +223,8 @@ class Client extends EventEmitter2
     @buffer = lines.pop()
     for line in lines
       do (line) ->
-        message = @_parseMessage(line)
         try
-          self.emit('raw', message)
+          @_messageReceived(line)
         catch err
           throw err if !@conn.requestedDisconnect
 
@@ -183,13 +259,16 @@ class Client extends EventEmitter2
 
   _debug: (message) =>
     return unless @opt.debug
-    console.log(message)
+    sys.log(message)
 
   _parseMessage: (line) ->
     # possibly do other processing here
    message.parse(line)
 
 
-module.exports = Client
+module.exports =
+  Client: Client
+  Mode: Mode
+  Channel: Channel
 
 

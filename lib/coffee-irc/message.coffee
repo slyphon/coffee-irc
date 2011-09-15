@@ -130,6 +130,8 @@ class Message
       @command = rf.name
       @commandType = rf.type
 
+    @command = @command.toLowerCase()
+
     middle = trailing = null
     idx = line.indexOf(':')
 
@@ -147,7 +149,7 @@ class Message
 
   _extend: ->
     switch @command
-      when 'PRIVMSG' then PrivmsgMixin.extend(this)
+      when 'privmsg' then PrivmsgMixin.extend(this)
 
 
 module.exports.parse = (args...) ->
